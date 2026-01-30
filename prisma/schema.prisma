@@ -1,0 +1,254 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum FAQType {
+  TEXT
+  ARTICLE
+  FILE
+}
+
+enum Priority {
+  RENDAH
+  SEDANG
+  TINGGI
+}
+
+model Role {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  users           User[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+model User {
+  id        String    @id @default(uuid())
+  name      String
+  email     String    @unique
+  phone     String?
+  password  String
+  avatar    String?
+  address   String?
+  roleId    String    @map("role_id")
+  hireDate  DateTime  @default(now()) @map("hire_date")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // Relations
+  role            Role             @relation(fields: [roleId], references: [id])
+  chats           Chat[]           @relation("UserChats")
+  receivedChats   Chat[]           @relation("RecipientChats")
+  reports         Report[]         @relation("UserReports")
+  assignedReports Report[]         @relation("AssignedReports")
+  reportResponses ReportResponse[] @relation("ReportResponses")
+  broadcasts      Broadcast[]
+  notifications   Notification[]
+  broadcastReads  BroadcastRead[]
+  
+  // Audit Log Relations
+  previousAssignmentLogs ReportAssignmentLog[] @relation("LogPreviousAssignee")
+  newAssignmentLogs      ReportAssignmentLog[] @relation("LogNewAssignee")
+  changedAssignmentLogs  ReportAssignmentLog[] @relation("LogChangedBy")
+
+  @@map("users")
+}
+
+model FAQ {
+  id        String    @id @default(cuid())
+  question  String
+  answer    String
+  type      FAQType
+  files     String[]  @default([])
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("faqs")
+}
+
+model Report {
+  id           String    @id @default(cuid())
+  title        String
+  description  String
+  status       String    @default("PENDING")
+  priority     Priority  @default(SEDANG)
+  userId       String    @map("user_id")
+  issueTypeId  String?   @map("issue_type_id")
+  assignedToId String?   @map("assigned_to_id")
+  images       String[]  @default([])
+  driveFileIds String[]  @default([]) @map("drive_file_ids")
+  driveLinks   String[]  @default([]) @map("drive_links")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  // Relations
+  user       User             @relation("UserReports", fields: [userId], references: [id])
+  issueType  IssueType?       @relation(fields: [issueTypeId], references: [id])
+  assignedTo User?            @relation("AssignedReports", fields: [assignedToId], references: [id])
+  responses  ReportResponse[]
+  assignmentLogs ReportAssignmentLog[] // Relation to Audit Logs
+
+  @@map("reports")
+}
+
+model ReportResponse {
+  id           String    @id @default(cuid())
+  message      String
+  reportId     String    @map("report_id")
+  adminId      String    @map("admin_id")
+  images       String[]  @default([])
+  driveFileIds String[]  @default([]) @map("drive_file_ids")
+  driveLinks   String[]  @default([]) @map("drive_links")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  // Relations
+  report Report @relation(fields: [reportId], references: [id])
+  admin  User   @relation("ReportResponses", fields: [adminId], references: [id])
+
+  @@map("report_responses")
+}
+
+model Chat {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  message     String
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+  recipientId String?   @map("recipient_id")
+  isRead      Boolean   @default(false) @map("is_read")
+
+  // Relations
+  user      User  @relation("UserChats", fields: [userId], references: [id])
+  recipient User? @relation("RecipientChats", fields: [recipientId], references: [id])
+
+  @@map("chats")
+}
+
+model Broadcast {
+  id        String    @id @default(cuid())
+  message   String
+  userId    String    @map("user_id")
+  files     String[]  @default([])
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+  readBy BroadcastRead[]
+
+  @@map("broadcasts")
+}
+
+model BroadcastRead {
+  id          String    @id @default(cuid())
+  broadcastId String    @map("broadcast_id")
+  userId      String    @map("user_id")
+  readAt      DateTime  @default(now()) @map("read_at")
+
+  broadcast Broadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([broadcastId, userId])
+  @@map("broadcast_reads")
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  title     String
+  message   String
+  type      String    @default("info") // Type of notification
+  isRead    Boolean   @default(false) @map("is_read") // <--- tambahkan ini
+  userId    String    @map("user_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+model Permission {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  resource    String // e.g., "users", "reports", "faqs"
+  action      String // e.g., "create", "read", "update", "delete"
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String   @id @default(cuid())
+  roleId       String   @map("role_id")
+  permissionId String   @map("permission_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model IssueType {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  icon        String? // Optional icon name
+  color       String? // Optional color code
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  reports Report[]
+
+  @@map("issue_types")
+}
+
+model ReportAssignmentLog {
+  id               String   @id @default(cuid())
+  reportId         String   @map("report_id")
+  previousAssigneeId String? @map("previous_assignee_id")
+  newAssigneeId    String?   @map("new_assignee_id")
+  changedById      String   @map("changed_by_id")
+  reason           String   @db.Text
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  // Relations
+  report           Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  previousAssignee User?    @relation("LogPreviousAssignee", fields: [previousAssigneeId], references: [id])
+  newAssignee      User?    @relation("LogNewAssignee", fields: [newAssigneeId], references: [id])
+  changedBy        User     @relation("LogChangedBy", fields: [changedById], references: [id])
+
+  @@map("report_assignment_logs")
+}
