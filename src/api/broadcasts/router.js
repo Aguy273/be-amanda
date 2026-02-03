@@ -14,6 +14,7 @@ const {
 
 // Import middleware functions
 const { authenticateToken } = require('../../utils/authMiddleware');
+const { checkPermission } = require('../../utils/checkPermission');
 const { upload } = require('../../utils/fileUpload');
 
 // Rate limiting untuk prevent spam
@@ -79,11 +80,11 @@ const authorize = (roles) => {
 // GET /broadcasts - Get all broadcasts (All authenticated users)
 router.get('/broadcasts', authenticateToken, getAllBroadcasts);
 
-// GET /broadcasts/stats - Get broadcast statistics (Master and Admin)
+// GET /broadcasts/stats - Get broadcast statistics (requires permission)
 router.get(
   '/broadcasts/stats',
   authenticateToken,
-  authorize(['MASTER', 'ADMIN']),
+  checkPermission('broadcasts.read'),
   getBroadcastStats
 );
 
@@ -100,32 +101,32 @@ router.get('/broadcasts/user/:userId', authenticateToken, getBroadcastsByUser);
 // GET /broadcasts/:id - Get broadcast by ID (All authenticated users)
 router.get('/broadcasts/:id', authenticateToken, getBroadcastById);
 
-// POST /broadcasts - Create new broadcast (Admin/Master)
+// POST /broadcasts - Create new broadcast (requires permission)
 router.post(
   '/broadcasts',
   authenticateToken,
-  authorize(['MASTER', 'ADMIN']),
+  checkPermission('broadcasts.create'),
   broadcastLimit,
   upload.array('files', 10), // Allow up to 10 files
   validateBroadcastMessage,
   createBroadcast
 );
 
-// PUT /broadcasts/:id - Update broadcast (Admin/Master, own broadcasts or Master can edit any)
+// PUT /broadcasts/:id - Update broadcast (requires permission)
 router.put(
   '/broadcasts/:id',
   authenticateToken,
-  authorize(['MASTER', 'ADMIN']),
+  checkPermission('broadcasts.update'),
   upload.array('files', 10), // Allow up to 10 files
   validateBroadcastMessage,
   updateBroadcast
 );
 
-// DELETE /broadcasts/:id - Delete broadcast (Admin/Master, own broadcasts or Master can delete any)
+// DELETE /broadcasts/:id - Delete broadcast (requires permission)
 router.delete(
   '/broadcasts/:id',
   authenticateToken,
-  authorize(['MASTER', 'ADMIN']),
+  checkPermission('broadcasts.delete'),
   deleteBroadcast
 );
 

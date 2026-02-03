@@ -187,6 +187,14 @@ module.exports = {
         });
       }
 
+      if (req.user.role.name === STAFF_ROLE && role.name !== STAFF_ROLE) {
+        return res.status(403).json({
+          success: false,
+          message: "Staff users can only create other Staff users",
+          data: null,
+        });
+      }
+
       console.log("Creating user with role:", role, "user:", user);
 
       const getSalt = 10;
@@ -379,6 +387,8 @@ module.exports = {
         allowedRoles = [STAFF_ROLE];
       } else if (currentUserRole === MASTER_ROLE) {
         allowedRoles = [ADMIN_ROLE, STAFF_ROLE];
+      } else if (currentUserRole === STAFF_ROLE) {
+        allowedRoles = [STAFF_ROLE];
       }
 
       const result = await prisma.role.findMany({

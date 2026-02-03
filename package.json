@@ -2,11 +2,11 @@
   "name": "my-express-app",
   "version": "1.0.0",
   "description": "A simple Express application",
-  "main": "src/index.js",
   "type": "commonjs",
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
+    "build": "bun build src/index.js --outdir dist --target node --external @prisma/client --external prisma --external googleapis",
     "prisma:generate": "prisma generate",
     "prisma:seed": "node prisma/seeds/seed.js"
   },

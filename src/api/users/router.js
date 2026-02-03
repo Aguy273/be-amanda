@@ -1,10 +1,9 @@
 const router = require('express').Router();
 const {
   authenticateToken,
-  requireAdmin,
-  requireMaster,
+  requireOwnerOrAdmin,
 } = require('../../utils/authMiddleware');
-const { authorize } = require('../chats/auth-middleware');
+const { checkPermission } = require('../../utils/checkPermission');
 
 const {
   get,
@@ -21,38 +20,40 @@ const { uploadMiddleware } = require('../../utils/fileUpload');
 router.get(
   '/users/stats',
   authenticateToken,
-  authorize(['MASTER', 'ADMIN']),
+  checkPermission('users.read'),
   getStats
 );
 router.get(
   '/users/available-roles',
   authenticateToken,
-  authorize(['MASTER', 'ADMIN']),
+  checkPermission('users.read'),
   getAvailableRoles
 );
 router.get(
   '/users/:id',
   authenticateToken,
-  authorize(['MASTER', 'ADMIN']),
+  checkPermission('users.read'),
   getById
 );
-router.get('/users', authenticateToken, authorize(['MASTER', 'ADMIN']), get);
+router.get('/users', authenticateToken, checkPermission('users.read'), get);
 router.post(
   '/users',
   authenticateToken,
-  authorize(['MASTER', 'ADMIN']),
+  checkPermission('users.create'),
   create
 );
 router.put(
   '/users/:id',
   authenticateToken,
+  requireOwnerOrAdmin,
+  checkPermission('users.update'),
   uploadMiddleware.profileImage,
   update
 );
 router.delete(
   '/users/:id',
   authenticateToken,
-  authorize(['MASTER', 'ADMIN']),
+  checkPermission('users.delete'),
   destroy
 );
 

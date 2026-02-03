@@ -1,10 +1,8 @@
 const router = require('express').Router();
 const multer = require('multer');
 const { uploadMiddleware } = require('../../utils/fileUpload');
-const {
-  authenticateToken,
-  requireAdmin,
-} = require('../../utils/authMiddleware');
+const { authenticateToken } = require('../../utils/authMiddleware');
+const { checkPermission } = require('../../utils/checkPermission');
 
 const { getAll, getById, create, update, destroy } = require('./controller');
 
@@ -14,18 +12,18 @@ router.get('/faqs/:id', getById); // Public access
 router.post(
   '/faqs',
   authenticateToken,
-  requireAdmin,
+  checkPermission('faqs.create'),
   uploadMiddleware.faqFiles,
   create
 );
 router.put(
   '/faqs/:id',
   authenticateToken,
-  requireAdmin,
+  checkPermission('faqs.update'),
   uploadMiddleware.faqFiles,
   update
 );
-router.delete('/faqs/:id', authenticateToken, requireAdmin, destroy);
+router.delete('/faqs/:id', authenticateToken, checkPermission('faqs.delete'), destroy);
 
 // Error handling middleware for multer errors
 router.use((error, req, res, next) => {
